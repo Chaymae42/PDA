@@ -44,11 +44,11 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
 
     # Local apps
-    'authentication',
-    'users',
-    'products',
-    'orders',
-    'notifications',
+    'app.authentication',
+    'app.users',
+    'app.products',
+    'app.orders',
+    'app.notifications',
 
     # Third party
     'rest_framework',
