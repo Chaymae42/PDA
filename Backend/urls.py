@@ -33,12 +33,11 @@ urlpatterns = [
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
 
 # API
-    path('api/auth/', include('authentication.urls')),
-    path('api/users/', include('users.urls')),
-    path('api/products/', include('products.urls')),
-    path('api/orders/', include('orders.urls')),
-    path('api/notifications/', include('notifications.urls')),
-
+    path('api/auth/', include('app.authentication.urls')),
+    path('api/users/', include('app.users.urls')),
+    path('api/products/', include('app.products.urls')),
+    path('api/orders/', include('app.orders.urls')),
+    path('api/notifications/', include('app.notifications.urls')),
 # Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='docs'),
