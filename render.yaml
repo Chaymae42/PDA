@@ -1,0 +1,22 @@
+databases:
+  # Base de données gérée par Neon (externe)
+  # Pas besoin de créer une DB Render
+
+services:
+  - type: web
+    name: pda-backend
+    runtime: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn Backend.wsgi:application"
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # À configurer manuellement avec l'URL Neon
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+
