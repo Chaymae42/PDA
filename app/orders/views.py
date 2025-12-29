@@ -52,12 +52,20 @@ def create_order(request):
         total_amount=0
     )
 
-    # Ajouter les produits
+    # Ajouter les produits et vérifier/décrémenter le stock
     total = 0
     for item_data in items:
         try:
             product = Product.objects.get(id=item_data['product_id'], is_validated=True)
-            quantity = int(item_data['quantity'])
+            quantity = float(item_data['quantity'])
+            
+            # Vérifier si le stock est suffisant
+            if product.stock is not None and product.stock < quantity:
+                order.delete()
+                return Response(
+                    {'error': f'Stock insuffisant pour {product.name}. Disponible: {product.stock} {product.unit}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             OrderItem.objects.create(
                 order=order,
@@ -67,6 +75,12 @@ def create_order(request):
                 unit=product.unit,
                 unit_price=product.price
             )
+            
+            # Décrémenter le stock
+            if product.stock is not None:
+                product.stock = product.stock - quantity
+                product.save()
+            
             total += quantity * product.price
         except Product.DoesNotExist:
             order.delete()
@@ -236,6 +250,12 @@ def cancel_order(request, pk):
         order.cancelled_by = request.user
         order.cancelled_at = timezone.now()
         order.save()
+        
+        # Remettre le stock pour les produits de la commande
+        for item in order.items.all():
+            if item.product and item.product.stock is not None:
+                item.product.stock = item.product.stock + item.quantity
+                item.product.save()
 
         # Historique
         OrderHistory.objects.create(
@@ -243,7 +263,7 @@ def cancel_order(request, pk):
             action='cancelled',
             user=request.user,
             user_role=request.user.role,
-            description=f"Commande annulée par {request.user.username}. Motif: {reason}"
+            description=f"Commande annulée par {request.user.username}. Motif: {reason}. Stock restauré."
         )
 
         return Response({
@@ -354,14 +374,19 @@ def mark_ready(request, pk):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsMagasinier])
 def available_deliverers(request):
-    """Liste des livreurs disponibles avec leur distance"""
-    livreurs = User.objects.filter(
-        role='livreur',
-        is_active_account=True
-    )
+    """Liste des livreurs disponibles"""
+    # Récupérer tous les livreurs (actifs ou non pour debug)
+    livreurs = User.objects.filter(role='livreur')
+    
+    # Filtrer uniquement les actifs si possible
+    active_livreurs = livreurs.filter(is_active=True, is_active_account=True)
+    
+    # Si aucun livreur actif, prendre tous les livreurs
+    if not active_livreurs.exists():
+        active_livreurs = livreurs
 
     data = []
-    for livreur in livreurs:
+    for livreur in active_livreurs:
         # Compter les livraisons en cours
         active_deliveries = Order.objects.filter(
             deliverer=livreur,
@@ -372,7 +397,7 @@ def available_deliverers(request):
             'id': livreur.id,
             'username': livreur.username,
             'full_name': livreur.get_full_name() or livreur.username,
-            'phone': livreur.phone,
+            'phone': getattr(livreur, 'phone', None),
             'active_deliveries': active_deliveries,
             'latitude': float(livreur.latitude) if livreur.latitude else None,
             'longitude': float(livreur.longitude) if livreur.longitude else None
@@ -529,6 +554,12 @@ def cancel_delivery(request, pk):
         order.cancelled_by = request.user
         order.cancelled_at = timezone.now()
         order.save()
+        
+        # Remettre le stock pour les produits de la commande
+        for item in order.items.all():
+            if item.product and item.product.stock is not None:
+                item.product.stock = item.product.stock + item.quantity
+                item.product.save()
 
         # Historique
         OrderHistory.objects.create(
@@ -536,7 +567,7 @@ def cancel_delivery(request, pk):
             action='delivery_cancelled',
             user=request.user,
             user_role=request.user.role,
-            description=f"Livraison annulée par {request.user.username}. Motif: {reason}"
+            description=f"Livraison annulée par {request.user.username}. Motif: {reason}. Stock restauré."
         )
         # Notifications
         Notification.objects.create(
@@ -555,7 +586,8 @@ def cancel_delivery(request, pk):
                 message=f'Commande {order.order_number} annulée par livreur. Motif: {reason}',
                 order=order
             )
-            return Response({
+        
+        return Response({
             'message': 'Livraison annulée',
             'order': OrderDetailSerializer(order).data
         })

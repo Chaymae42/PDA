@@ -14,6 +14,7 @@ class User(AbstractUser):
     )
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    # phone = models.CharField(max_length=20, null=True, blank=True)  # À ajouter avec migration
     is_active_account = models.BooleanField(default=True)
 
     # Pour livreur - localisation
