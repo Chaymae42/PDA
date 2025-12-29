@@ -203,6 +203,105 @@ def delete_product(request, pk):
             status=status.HTTP_404_NOT_FOUND
         )
 
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_stock(request, pk):
+    """
+    Magasinier ou Admin: Mettre à jour la quantité en stock d'un produit
+    """
+    # Vérifier que l'utilisateur est admin ou magasinier
+    if request.user.role not in ['admin', 'magasinier']:
+        return Response(
+            {'error': 'Non autorisé'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        product = Product.objects.get(pk=pk)
+        
+        stock = request.data.get('stock')
+        if stock is None:
+            return Response(
+                {'error': 'Quantité en stock requise'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Vérifier que le stock est un nombre valide
+        try:
+            stock = float(stock)
+            if stock < 0:
+                return Response(
+                    {'error': 'La quantité ne peut pas être négative'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'Quantité invalide'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        product.stock = stock
+        product.save()
+        
+        return Response({
+            'message': 'Stock mis à jour avec succès',
+            'product': ProductSerializer(product).data
+        })
+    
+    except Product.DoesNotExist:
+        return Response(
+            {'error': 'Produit introuvable'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_stock(request, pk):
+    """
+    Magasinier ou Admin: Ajouter une quantité au stock existant
+    """
+    if request.user.role not in ['admin', 'magasinier']:
+        return Response(
+            {'error': 'Non autorisé'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        product = Product.objects.get(pk=pk)
+        
+        quantity = request.data.get('quantity')
+        if quantity is None:
+            return Response(
+                {'error': 'Quantité à ajouter requise'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            quantity = float(quantity)
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'Quantité invalide'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        product.stock = (product.stock or 0) + quantity
+        if product.stock < 0:
+            product.stock = 0
+        product.save()
+        
+        return Response({
+            'message': f'Stock mis à jour: {product.stock} {product.unit}',
+            'product': ProductSerializer(product).data
+        })
+    
+    except Product.DoesNotExist:
+        return Response(
+            {'error': 'Produit introuvable'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsAdmin])
 @parser_classes([MultiPartParser, FormParser])

@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "framework": null,
+  "installCommand": "cd Frontend && npm install --legacy-peer-deps",
+  "buildCommand": "cd Frontend && npx expo export -p web",
+  "outputDirectory": "Frontend/dist"
+}

@@ -9,5 +9,7 @@ urlpatterns = [
     path('<int:pk>/validate/', views.validate_product, name='validate-product'),
     path('<int:pk>/update/', views.update_product, name='update-product'),
     path('<int:pk>/delete/', views.delete_product, name='delete-product'),
+    path('<int:pk>/stock/', views.update_stock, name='update-stock'),
+    path('<int:pk>/add-stock/', views.add_stock, name='add-stock'),
     path('import/', views.import_products_excel, name='import-products'),
 ]
